@@ -1,0 +1,231 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Dimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+  Stethoscope,
+  Calendar,
+  FileText,
+  Activity,
+  Users,
+  Clock,
+} from 'lucide-react-native';
+import Colors from '@/constants/colors';
+
+const { width } = Dimensions.get('window');
+const cardWidth = (width - 48) / 2;
+
+interface QuickActionCard {
+  id: string;
+  title: string;
+  icon: React.ReactNode;
+  route: string;
+  color: string;
+}
+
+export default function HomeScreen() {
+  const router = useRouter();
+
+  const quickActions: QuickActionCard[] = [
+    {
+      id: '1',
+      title: 'Check Symptoms',
+      icon: <Activity size={32} color={Colors.primary} />,
+      route: '/symptom-checker',
+      color: Colors.primaryLight,
+    },
+    {
+      id: '2',
+      title: 'Find Doctors',
+      icon: <Users size={32} color={Colors.success} />,
+      route: '/doctors',
+      color: Colors.successLight,
+    },
+    {
+      id: '3',
+      title: 'My Appointments',
+      icon: <Calendar size={32} color={Colors.warning} />,
+      route: '/appointments',
+      color: Colors.warning,
+    },
+    {
+      id: '4',
+      title: 'Prescriptions',
+      icon: <FileText size={32} color={Colors.primary} />,
+      route: '/prescriptions',
+      color: Colors.primaryLight,
+    },
+  ];
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Welcome to</Text>
+          <Text style={styles.hospitalName}>MediCare Hospital</Text>
+        </View>
+        <View style={styles.iconContainer}>
+          <Stethoscope size={40} color={Colors.primary} />
+        </View>
+      </View>
+
+      <View style={styles.infoCard}>
+        <Clock size={24} color={Colors.primary} />
+        <View style={styles.infoContent}>
+          <Text style={styles.infoTitle}>24/7 Emergency Services</Text>
+          <Text style={styles.infoText}>
+            We're here for you round the clock
+          </Text>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Quick Actions</Text>
+
+      <View style={styles.cardsContainer}>
+        {quickActions.map((action) => (
+          <TouchableOpacity
+            key={action.id}
+            style={[styles.card, { width: cardWidth }]}
+            onPress={() => router.push(action.route as any)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: `${action.color}20` }]}>
+              {action.icon}
+            </View>
+            <Text style={styles.cardTitle}>{action.title}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.helpSection}>
+        <Text style={styles.helpTitle}>How can we help you today?</Text>
+        <Text style={styles.helpText}>
+          Start by checking your symptoms or browse our specialist doctors to
+          book an appointment.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  content: {
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingTop: 8,
+  },
+  greeting: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  hospitalName: {
+    fontSize: 28,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${Colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: Colors.background,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  infoContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  cardsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    marginBottom: 24,
+  },
+  card: {
+    backgroundColor: Colors.background,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    textAlign: 'center',
+  },
+  helpSection: {
+    backgroundColor: Colors.background,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  helpTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+});

@@ -1,0 +1,326 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Image,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Search, Star, MapPin, Clock } from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import { doctors } from '@/data/doctors';
+import { Specialty } from '@/types/hospital';
+
+const specialties: Specialty[] = [
+  'General Medicine',
+  'Cardiology',
+  'Neurology',
+  'Pediatrics',
+  'Orthopedics',
+  'Dermatology',
+  'Gynecology',
+  'ENT',
+];
+
+export default function DoctorsScreen() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState<Specialty | 'All'>('All');
+
+  const filteredDoctors = useMemo(() => {
+    return doctors.filter((doctor) => {
+      const matchesSearch =
+        doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSpecialty =
+        selectedSpecialty === 'All' || doctor.specialty === selectedSpecialty;
+      return matchesSearch && matchesSpecialty;
+    });
+  }, [searchQuery, selectedSpecialty]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Search size={20} color={Colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search doctors..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={Colors.textLight}
+          />
+        </View>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterContainer}
+        contentContainerStyle={styles.filterContent}
+      >
+        <TouchableOpacity
+          style={[
+            styles.filterChip,
+            selectedSpecialty === 'All' && styles.filterChipActive,
+          ]}
+          onPress={() => setSelectedSpecialty('All')}
+        >
+          <Text
+            style={[
+              styles.filterText,
+              selectedSpecialty === 'All' && styles.filterTextActive,
+            ]}
+          >
+            All
+          </Text>
+        </TouchableOpacity>
+        {specialties.map((specialty) => (
+          <TouchableOpacity
+            key={specialty}
+            style={[
+              styles.filterChip,
+              selectedSpecialty === specialty && styles.filterChipActive,
+            ]}
+            onPress={() => setSelectedSpecialty(specialty)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedSpecialty === specialty && styles.filterTextActive,
+              ]}
+            >
+              {specialty}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView style={styles.listContainer} contentContainerStyle={styles.listContent}>
+        {filteredDoctors.map((doctor) => (
+          <TouchableOpacity
+            key={doctor.id}
+            style={styles.doctorCard}
+            onPress={() => router.push(`/doctor/${doctor.id}` as any)}
+            activeOpacity={0.7}
+          >
+            <Image source={{ uri: doctor.image }} style={styles.doctorImage} />
+            <View style={styles.doctorInfo}>
+              <View style={styles.doctorHeader}>
+                <Text style={styles.doctorName}>{doctor.name}</Text>
+                {doctor.available && (
+                  <View style={styles.availableBadge}>
+                    <View style={styles.availableDot} />
+                    <Text style={styles.availableText}>Available</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.specialty}>{doctor.specialty}</Text>
+              <Text style={styles.qualification}>{doctor.qualification}</Text>
+              
+              <View style={styles.detailsRow}>
+                <View style={styles.detailItem}>
+                  <Star size={14} color={Colors.warning} fill={Colors.warning} />
+                  <Text style={styles.detailText}>{doctor.rating}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Clock size={14} color={Colors.textSecondary} />
+                  <Text style={styles.detailText}>{doctor.experience} years</Text>
+                </View>
+              </View>
+
+              <View style={styles.locationRow}>
+                <MapPin size={14} color={Colors.textSecondary} />
+                <Text style={styles.locationText}>{doctor.location}</Text>
+              </View>
+
+              <View style={styles.footer}>
+                <Text style={styles.fee}>₹{doctor.consultationFee}</Text>
+                <View style={styles.bookButton}>
+                  <Text style={styles.bookButtonText}>Book Now</Text>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  searchContainer: {
+    padding: 16,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: Colors.text,
+  },
+  filterContainer: {
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.backgroundGray,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500' as const,
+  },
+  filterTextActive: {
+    color: Colors.background,
+  },
+  listContainer: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 16,
+    gap: 16,
+  },
+  doctorCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  doctorImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: Colors.backgroundGray,
+  },
+  doctorInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  doctorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  doctorName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    flex: 1,
+  },
+  availableBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.success}15`,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  availableDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.success,
+    marginRight: 4,
+  },
+  availableText: {
+    fontSize: 11,
+    color: Colors.success,
+    fontWeight: '600' as const,
+  },
+  specialty: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+    marginBottom: 2,
+  },
+  qualification: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  detailText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 12,
+  },
+  locationText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fee: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  bookButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  bookButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+});

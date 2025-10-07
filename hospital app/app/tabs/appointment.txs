@@ -1,0 +1,342 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Calendar, Clock, MapPin, Plus, FileText } from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import { useHospital } from '@/contexts/HospitalContext';
+import { doctors } from '@/data/doctors';
+import { Prescription } from '@/types/hospital';
+
+export default function AppointmentsScreen() {
+  const router = useRouter();
+  const { appointments, addPrescription } = useHospital();
+
+  const getDoctor = (doctorId: string) => {
+    return doctors.find((d) => d.id === doctorId);
+  };
+
+  const handleGeneratePrescription = (appointmentId: string, doctorId: string, patientName: string) => {
+    const prescription: Prescription = {
+      id: Date.now().toString(),
+      appointmentId,
+      doctorId,
+      patientName,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      diagnosis: 'General consultation completed. Patient condition stable.',
+      medications: [
+        {
+          name: 'Paracetamol 500mg',
+          dosage: '1 tablet',
+          frequency: 'Twice daily',
+          duration: '5 days',
+        },
+        {
+          name: 'Vitamin D3',
+          dosage: '1 capsule',
+          frequency: 'Once daily',
+          duration: '30 days',
+        },
+      ],
+      instructions: 'Take medications after meals. Get adequate rest and stay hydrated. Follow up if symptoms persist.',
+    };
+
+    addPrescription(prescription);
+    Alert.alert(
+      'Prescription Generated',
+      'Your prescription has been generated successfully. Thank you for visiting MediCare Hospital!',
+      [
+        {
+          text: 'View Prescription',
+          onPress: () => router.push('/prescriptions'),
+        },
+        { text: 'OK' },
+      ]
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>My Appointments</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push('/doctors')}
+        >
+          <Plus size={20} color={Colors.background} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {appointments.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Calendar size={64} color={Colors.textLight} />
+            <Text style={styles.emptyTitle}>No Appointments Yet</Text>
+            <Text style={styles.emptyText}>
+              Book an appointment with our specialist doctors
+            </Text>
+            <TouchableOpacity
+              style={styles.bookButton}
+              onPress={() => router.push('/doctors')}
+            >
+              <Text style={styles.bookButtonText}>Find Doctors</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          appointments.map((appointment) => {
+            const doctor = getDoctor(appointment.doctorId);
+            if (!doctor) return null;
+
+            return (
+              <View
+                key={appointment.id}
+                style={styles.appointmentCard}
+              >
+                <View style={styles.cardHeader}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      appointment.status === 'completed' && styles.statusCompleted,
+                      appointment.status === 'cancelled' && styles.statusCancelled,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        appointment.status === 'completed' && styles.statusTextCompleted,
+                        appointment.status === 'cancelled' && styles.statusTextCancelled,
+                      ]}
+                    >
+                      {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.doctorSection}>
+                  <Image source={{ uri: doctor.image }} style={styles.doctorImage} />
+                  <View style={styles.doctorInfo}>
+                    <Text style={styles.doctorName}>{doctor.name}</Text>
+                    <Text style={styles.specialty}>{doctor.specialty}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailsSection}>
+                  <View style={styles.detailRow}>
+                    <Calendar size={16} color={Colors.textSecondary} />
+                    <Text style={styles.detailText}>{appointment.date}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Clock size={16} color={Colors.textSecondary} />
+                    <Text style={styles.detailText}>{appointment.time}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <MapPin size={16} color={Colors.textSecondary} />
+                    <Text style={styles.detailText}>{doctor.location}</Text>
+                  </View>
+                </View>
+
+                {appointment.symptoms && (
+                  <View style={styles.symptomsSection}>
+                    <Text style={styles.symptomsLabel}>Symptoms:</Text>
+                    <Text style={styles.symptomsText}>{appointment.symptoms}</Text>
+                  </View>
+                )}
+
+                {appointment.status === 'scheduled' && (
+                  <TouchableOpacity
+                    style={styles.prescriptionButton}
+                    onPress={() => handleGeneratePrescription(appointment.id, appointment.doctorId, appointment.patientName)}
+                    activeOpacity={0.7}
+                  >
+                    <FileText size={16} color={Colors.background} />
+                    <Text style={styles.prescriptionButtonText}>Complete & Get Prescription</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    gap: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  bookButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  bookButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+  appointmentCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 12,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: `${Colors.primary}15`,
+  },
+  statusCompleted: {
+    backgroundColor: `${Colors.success}15`,
+  },
+  statusCancelled: {
+    backgroundColor: `${Colors.error}15`,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.primary,
+  },
+  statusTextCompleted: {
+    color: Colors.success,
+  },
+  statusTextCancelled: {
+    color: Colors.error,
+  },
+  doctorSection: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  doctorImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: Colors.backgroundGray,
+  },
+  doctorInfo: {
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  doctorName: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  specialty: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+  },
+  detailsSection: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  symptomsSection: {
+    backgroundColor: Colors.backgroundGray,
+    padding: 12,
+    borderRadius: 12,
+  },
+  symptomsLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  symptomsText: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  prescriptionButton: {
+    backgroundColor: Colors.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  prescriptionButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+});

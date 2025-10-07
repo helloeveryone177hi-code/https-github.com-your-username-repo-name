@@ -1,0 +1,549 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Alert,
+} from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  Star,
+  MapPin,
+  Clock,
+  Calendar,
+  Briefcase,
+  DollarSign,
+  X,
+} from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import { doctors } from '@/data/doctors';
+import { useHospital } from '@/contexts/HospitalContext';
+import { Appointment } from '@/types/hospital';
+
+export default function DoctorDetailScreen() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  const { addAppointment, currentSymptoms } = useHospital();
+  const [showBookingModal, setShowBookingModal] = useState<boolean>(false);
+  const [patientName, setPatientName] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [symptoms, setSymptoms] = useState<string>(currentSymptoms);
+
+  const doctor = doctors.find((d) => d.id === id);
+
+  if (!doctor) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Doctor not found</Text>
+      </View>
+    );
+  }
+
+  const availableTimes = [
+    '9:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '2:00 PM',
+    '3:00 PM',
+    '4:00 PM',
+  ];
+
+  const getNextDates = () => {
+    const dates = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' }) as any;
+      if (doctor.workingDays.includes(dayName)) {
+        dates.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+      }
+    }
+    return dates;
+  };
+
+  const availableDates = getNextDates();
+
+  const handleBookAppointment = () => {
+    if (!patientName.trim() || !selectedDate || !selectedTime || !symptoms.trim()) {
+      Alert.alert('Missing Information', 'Please fill in all fields');
+      return;
+    }
+
+    const appointment: Appointment = {
+      id: Date.now().toString(),
+      doctorId: doctor.id,
+      patientName,
+      date: selectedDate,
+      time: selectedTime,
+      symptoms,
+      status: 'scheduled',
+    };
+
+    console.log('Booking appointment:', appointment);
+    addAppointment(appointment);
+    setShowBookingModal(false);
+    
+    Alert.alert(
+      'Appointment Booked!',
+      `Your appointment with ${doctor.name} is confirmed for ${selectedDate} at ${selectedTime}`,
+      [
+        {
+          text: 'View Appointments',
+          onPress: () => router.push('/appointments'),
+        },
+        { text: 'OK' },
+      ]
+    );
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: doctor.name,
+          headerStyle: { backgroundColor: Colors.background },
+          headerTintColor: Colors.text,
+        }}
+      />
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Image source={{ uri: doctor.image }} style={styles.doctorImage} />
+          <View style={styles.headerInfo}>
+            <Text style={styles.doctorName}>{doctor.name}</Text>
+            <Text style={styles.specialty}>{doctor.specialty}</Text>
+            <Text style={styles.qualification}>{doctor.qualification}</Text>
+            
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Star size={16} color={Colors.warning} fill={Colors.warning} />
+                <Text style={styles.statText}>{doctor.rating}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Briefcase size={16} color={Colors.textSecondary} />
+                <Text style={styles.statText}>{doctor.experience} years</Text>
+              </View>
+            </View>
+
+            {doctor.available && (
+              <View style={styles.availableBadge}>
+                <View style={styles.availableDot} />
+                <Text style={styles.availableText}>Available Today</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MapPin size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Location</Text>
+          </View>
+          <Text style={styles.locationText}>{doctor.location}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Clock size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Working Hours</Text>
+          </View>
+          <Text style={styles.timingText}>{doctor.timing}</Text>
+          <View style={styles.daysContainer}>
+            {doctor.workingDays.map((day) => (
+              <View key={day} style={styles.dayChip}>
+                <Text style={styles.dayText}>{day.substring(0, 3)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <DollarSign size={20} color={Colors.primary} />
+            <Text style={styles.sectionTitle}>Consultation Fee</Text>
+          </View>
+          <Text style={styles.feeText}>₹{doctor.consultationFee}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.bookButton, !doctor.available && styles.bookButtonDisabled]}
+          onPress={() => setShowBookingModal(true)}
+          disabled={!doctor.available}
+          activeOpacity={0.7}
+        >
+          <Calendar size={20} color={Colors.background} />
+          <Text style={styles.bookButtonText}>
+            {doctor.available ? 'Book Appointment' : 'Currently Unavailable'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      <Modal
+        visible={showBookingModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowBookingModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Book Appointment</Text>
+              <TouchableOpacity onPress={() => setShowBookingModal(false)}>
+                <X size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Patient Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your name"
+                value={patientName}
+                onChangeText={setPatientName}
+                placeholderTextColor={Colors.textLight}
+              />
+
+              <Text style={styles.inputLabel}>Select Date</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
+                {availableDates.map((date) => (
+                  <TouchableOpacity
+                    key={date}
+                    style={[
+                      styles.dateChip,
+                      selectedDate === date && styles.dateChipSelected,
+                    ]}
+                    onPress={() => setSelectedDate(date)}
+                  >
+                    <Text
+                      style={[
+                        styles.dateChipText,
+                        selectedDate === date && styles.dateChipTextSelected,
+                      ]}
+                    >
+                      {date}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.inputLabel}>Select Time</Text>
+              <View style={styles.timeGrid}>
+                {availableTimes.map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={[
+                      styles.timeChip,
+                      selectedTime === time && styles.timeChipSelected,
+                    ]}
+                    onPress={() => setSelectedTime(time)}
+                  >
+                    <Text
+                      style={[
+                        styles.timeChipText,
+                        selectedTime === time && styles.timeChipTextSelected,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Symptoms / Reason for Visit</Text>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Describe your symptoms..."
+                value={symptoms}
+                onChangeText={setSymptoms}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                placeholderTextColor={Colors.textLight}
+              />
+
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={handleBookAppointment}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.confirmButtonText}>Confirm Booking</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.backgroundGray,
+  },
+  errorText: {
+    fontSize: 18,
+    color: Colors.textSecondary,
+  },
+  header: {
+    backgroundColor: Colors.background,
+    padding: 20,
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  doctorImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 16,
+    backgroundColor: Colors.backgroundGray,
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  doctorName: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  specialty: {
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+    marginBottom: 2,
+  },
+  qualification: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  availableBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: `${Colors.success}15`,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  availableDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.success,
+    marginRight: 6,
+  },
+  availableText: {
+    fontSize: 12,
+    color: Colors.success,
+    fontWeight: '600' as const,
+  },
+  section: {
+    backgroundColor: Colors.background,
+    padding: 20,
+    marginTop: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  locationText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    lineHeight: 22,
+  },
+  timingText: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    marginBottom: 12,
+  },
+  daysContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dayChip: {
+    backgroundColor: `${Colors.primary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  dayText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600' as const,
+  },
+  feeText: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  bookButton: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+  },
+  bookButtonDisabled: {
+    backgroundColor: Colors.textLight,
+  },
+  bookButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  input: {
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: Colors.text,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dateScroll: {
+    marginBottom: 8,
+  },
+  dateChip: {
+    backgroundColor: Colors.backgroundGray,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  dateChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  dateChipText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500' as const,
+  },
+  dateChipTextSelected: {
+    color: Colors.background,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeChip: {
+    backgroundColor: Colors.backgroundGray,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  timeChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  timeChipText: {
+    fontSize: 14,
+    color: Colors.text,
+    fontWeight: '500' as const,
+  },
+  timeChipTextSelected: {
+    color: Colors.background,
+  },
+  textArea: {
+    backgroundColor: Colors.backgroundGray,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 16,
+    color: Colors.text,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  confirmButton: {
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+});

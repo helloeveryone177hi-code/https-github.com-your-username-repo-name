@@ -1,0 +1,329 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { Send, AlertCircle, Stethoscope } from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import { useHospital } from '@/contexts/HospitalContext';
+import { generateText } from '@rork/toolkit-sdk';
+import { Specialty } from '@/types/hospital';
+
+interface Recommendation {
+  specialty: Specialty;
+  urgency: 'low' | 'medium' | 'high';
+  reason: string;
+}
+
+export default function SymptomCheckerScreen() {
+  const router = useRouter();
+  const { updateSymptoms } = useHospital();
+  const [symptoms, setSymptoms] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+
+  const analyzeSymptoms = async () => {
+    if (!symptoms.trim()) return;
+
+    console.log('Analyzing symptoms:', symptoms);
+    setLoading(true);
+    updateSymptoms(symptoms);
+
+    try {
+      const prompt = `You are a medical triage assistant. Based on the following symptoms, recommend which medical specialty the patient should consult and the urgency level.
+
+Symptoms: ${symptoms}
+
+Available specialties: Cardiology, Dermatology, Neurology, Orthopedics, Pediatrics, Psychiatry, General Medicine, ENT, Ophthalmology, Gynecology
+
+Respond in this exact JSON format:
+{
+  "specialty": "one of the available specialties",
+  "urgency": "low, medium, or high",
+  "reason": "brief explanation in 1-2 sentences"
+}`;
+
+      const response = await generateText(prompt);
+      console.log('AI Response:', response);
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]) as Recommendation;
+        setRecommendation(parsed);
+      }
+    } catch (error) {
+      console.error('Error analyzing symptoms:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFindDoctor = () => {
+    router.push('/doctors');
+  };
+
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Symptom Checker',
+          headerStyle: { backgroundColor: Colors.background },
+          headerTintColor: Colors.text,
+        }}
+      />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.iconContainer}>
+            <Stethoscope size={32} color={Colors.primary} />
+          </View>
+          <Text style={styles.title}>Tell us what you&apos;re feeling</Text>
+          <Text style={styles.subtitle}>
+            Describe your symptoms and we&apos;ll recommend the right specialist
+          </Text>
+        </View>
+
+        <View style={styles.inputSection}>
+          <Text style={styles.label}>Your Symptoms</Text>
+          <TextInput
+            style={styles.textArea}
+            placeholder="E.g., I have a headache, fever, and body aches for the past 2 days..."
+            value={symptoms}
+            onChangeText={setSymptoms}
+            multiline
+            numberOfLines={6}
+            textAlignVertical="top"
+            placeholderTextColor={Colors.textLight}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.analyzeButton, loading && styles.analyzeButtonDisabled]}
+          onPress={analyzeSymptoms}
+          disabled={loading || !symptoms.trim()}
+          activeOpacity={0.7}
+        >
+          {loading ? (
+            <ActivityIndicator color={Colors.background} />
+          ) : (
+            <>
+              <Send size={20} color={Colors.background} />
+              <Text style={styles.analyzeButtonText}>Analyze Symptoms</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {recommendation && (
+          <View style={styles.recommendationCard}>
+            <View style={styles.recommendationHeader}>
+              <View
+                style={[
+                  styles.urgencyBadge,
+                  recommendation.urgency === 'high' && styles.urgencyHigh,
+                  recommendation.urgency === 'medium' && styles.urgencyMedium,
+                  recommendation.urgency === 'low' && styles.urgencyLow,
+                ]}
+              >
+                <AlertCircle size={16} color={Colors.background} />
+                <Text style={styles.urgencyText}>
+                  {recommendation.urgency.charAt(0).toUpperCase() + recommendation.urgency.slice(1)} Priority
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.recommendationTitle}>Recommended Specialist</Text>
+            <Text style={styles.specialtyText}>{recommendation.specialty}</Text>
+
+            <View style={styles.reasonSection}>
+              <Text style={styles.reasonLabel}>Why this specialist?</Text>
+              <Text style={styles.reasonText}>{recommendation.reason}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.findDoctorButton}
+              onPress={handleFindDoctor}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.findDoctorButtonText}>Find {recommendation.specialty} Doctors</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.disclaimer}>
+          <AlertCircle size={16} color={Colors.warning} />
+          <Text style={styles.disclaimerText}>
+            This is not a medical diagnosis. Please consult with a healthcare professional for proper evaluation.
+          </Text>
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  content: {
+    padding: 16,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: `${Colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  inputSection: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  textArea: {
+    backgroundColor: Colors.background,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.text,
+    minHeight: 150,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  analyzeButton: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 24,
+  },
+  analyzeButtonDisabled: {
+    opacity: 0.6,
+  },
+  analyzeButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+  recommendationCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  recommendationHeader: {
+    marginBottom: 16,
+  },
+  urgencyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  urgencyHigh: {
+    backgroundColor: Colors.error,
+  },
+  urgencyMedium: {
+    backgroundColor: Colors.warning,
+  },
+  urgencyLow: {
+    backgroundColor: Colors.success,
+  },
+  urgencyText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+  recommendationTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  specialtyText: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: Colors.primary,
+    marginBottom: 16,
+  },
+  reasonSection: {
+    backgroundColor: Colors.backgroundGray,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  reasonLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  reasonText: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  findDoctorButton: {
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  findDoctorButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.background,
+  },
+  disclaimer: {
+    flexDirection: 'row',
+    backgroundColor: `${Colors.warning}15`,
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  disclaimerText: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.text,
+    lineHeight: 18,
+  },
+});

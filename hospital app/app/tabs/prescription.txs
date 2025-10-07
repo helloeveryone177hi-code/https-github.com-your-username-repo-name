@@ -1,0 +1,239 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { FileText, Pill, Calendar } from 'lucide-react-native';
+import Colors from '@/constants/colors';
+import { useHospital } from '@/contexts/HospitalContext';
+import { doctors } from '@/data/doctors';
+
+export default function PrescriptionsScreen() {
+  const { prescriptions } = useHospital();
+
+  const getDoctor = (doctorId: string) => {
+    return doctors.find((d) => d.id === doctorId);
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        {prescriptions.length === 0 ? (
+          <View style={styles.emptyState}>
+            <FileText size={64} color={Colors.textLight} />
+            <Text style={styles.emptyTitle}>No Prescriptions Yet</Text>
+            <Text style={styles.emptyText}>
+              Your prescriptions will appear here after doctor consultations
+            </Text>
+          </View>
+        ) : (
+          prescriptions.map((prescription) => {
+            const doctor = getDoctor(prescription.doctorId);
+            if (!doctor) return null;
+
+            return (
+              <TouchableOpacity
+                key={prescription.id}
+                style={styles.prescriptionCard}
+                activeOpacity={0.7}
+              >
+                <View style={styles.header}>
+                  <View style={styles.iconContainer}>
+                    <FileText size={24} color={Colors.primary} />
+                  </View>
+                  <View style={styles.headerInfo}>
+                    <Text style={styles.patientName}>{prescription.patientName}</Text>
+                    <View style={styles.dateRow}>
+                      <Calendar size={14} color={Colors.textSecondary} />
+                      <Text style={styles.date}>{prescription.date}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.doctorSection}>
+                  <Text style={styles.label}>Prescribed by</Text>
+                  <Text style={styles.doctorName}>{doctor.name}</Text>
+                  <Text style={styles.specialty}>{doctor.specialty}</Text>
+                </View>
+
+                <View style={styles.diagnosisSection}>
+                  <Text style={styles.label}>Diagnosis</Text>
+                  <Text style={styles.diagnosisText}>{prescription.diagnosis}</Text>
+                </View>
+
+                <View style={styles.medicationsSection}>
+                  <Text style={styles.label}>Medications</Text>
+                  {prescription.medications.map((med, index) => (
+                    <View key={index} style={styles.medicationItem}>
+                      <View style={styles.medicationHeader}>
+                        <Pill size={16} color={Colors.primary} />
+                        <Text style={styles.medicationName}>{med.name}</Text>
+                      </View>
+                      <Text style={styles.medicationDetail}>
+                        {med.dosage} • {med.frequency} • {med.duration}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                {prescription.instructions && (
+                  <View style={styles.instructionsSection}>
+                    <Text style={styles.label}>Instructions</Text>
+                    <Text style={styles.instructionsText}>{prescription.instructions}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.backgroundGray,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    gap: 16,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  prescriptionCard: {
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: Colors.cardShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  header: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${Colors.primary}15`,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerInfo: {
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  patientName: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  date: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginBottom: 16,
+  },
+  doctorSection: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  doctorName: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  specialty: {
+    fontSize: 14,
+    color: Colors.primary,
+  },
+  diagnosisSection: {
+    marginBottom: 16,
+  },
+  diagnosisText: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  medicationsSection: {
+    marginBottom: 16,
+  },
+  medicationItem: {
+    backgroundColor: Colors.backgroundGray,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  medicationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  medicationName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: Colors.text,
+  },
+  medicationDetail: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginLeft: 24,
+  },
+  instructionsSection: {
+    backgroundColor: `${Colors.warning}10`,
+    padding: 12,
+    borderRadius: 12,
+  },
+  instructionsText: {
+    fontSize: 14,
+    color: Colors.text,
+    lineHeight: 20,
+  },
+});
